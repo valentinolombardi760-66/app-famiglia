@@ -1,5 +1,5 @@
 # Publishes the app on every change to main:
-# 1. database changes and the reminders function go to Supabase,
+# 1. database changes and the Edge Functions go to Supabase,
 # 2. the app goes to GitHub Pages.
 name: Pubblica
 
@@ -37,7 +37,7 @@ jobs:
           version: 2.118.0
       - run: supabase link --project-ref "$PROJECT_REF"
       - run: supabase db push
-      - run: supabase functions deploy send-reminders --project-ref "$PROJECT_REF"
+      - run: supabase functions deploy --project-ref "$PROJECT_REF"
 
   build:
     runs-on: ubuntu-latest

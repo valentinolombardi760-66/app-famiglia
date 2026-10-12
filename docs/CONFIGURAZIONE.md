@@ -19,24 +19,22 @@ da aprire con Chrome su ogni telefono.
    - la chiave **anon / public** (o *publishable*). È pubblica per costruzione: può stare nell'app.
      La chiave *service_role* / *secret* invece **non va mai copiata da nessuna parte**.
 3. Crea un token per la pubblicazione automatica: in alto a destra, avatar ›
-   **Account preferences › Access Tokens › Generate new token**, nome `github`. Annotalo.
+   **Account preferences › Access Tokens › Generate new token**, nome `github`, scadenza *Never*.
+   Se il modulo chiede i permessi, limita il token al progetto `app-famiglia` e scegli:
+   - *Read*: Project Settings, API Keys, API Key Secrets
+   - *Read-write*: Database, Migrations, Edge Functions, Edge Function Secrets
 
-## 2. Accesso con codice via email
+   Supabase lo mostra una volta sola: copialo subito nel segreto GitHub del punto 3.
 
-In Supabase, **Authentication**:
+## 2. Accesso con email e password
 
-1. **Sign In / Providers › Email**: lascia attivo *Email*.
-2. **Emails › Templates › Magic Link**: sostituisci il testo con
+Gli account li crea un genitore dall'app: nessuno può registrarsi da solo e non parte nessuna email.
 
-   ```html
-   <h2>Il tuo codice per l'app di famiglia</h2>
-   <p>Scrivi questo codice nell'app: <strong>{{ .Token }}</strong></p>
-   ```
+In Supabase, **Authentication › Sign In / Providers › Email** (il nome del menu può variare leggermente):
 
-3. **URL Configuration › Site URL**: `https://valentinolombardi760-66.github.io/app-famiglia/`
-
-Nota: il servizio email gratuito di Supabase manda pochi messaggi all'ora.
-Fate il primo accesso con calma, uno alla volta; dopo, l'app resta collegata e il codice non serve più.
+1. **Allow new users to sign up**: spento.
+2. **Confirm email**: spento.
+3. Salva.
 
 ## 3. Segreti e variabili su GitHub
 
@@ -72,17 +70,20 @@ Scheda **Variables** (*New repository variable*):
    Copiala in una nuova variabile `VITE_VAPID_PUBLIC_KEY` (scheda *Variables* del punto 3).
 3. **Actions › Pubblica › Run workflow** di nuovo, così l'app conosce la chiave.
 
-## 6. Ultimo collegamento nel database
+## 6. Il primo genitore e l'ultimo collegamento
 
-In Supabase apri **SQL Editor**, incolla questo testo, sostituisci i valori tra `<>` e premi *Run*:
+1. In Supabase, **Authentication › Users › Add user › Create new user**: la tua email e una password
+   (almeno 8 caratteri), con **Auto Confirm User** attivo.
+2. Apri **SQL Editor**, incolla questo testo, sostituisci i valori tra `<>` e premi *Run*:
 
 ```sql
 -- Indirizzo del progetto, usato per i promemoria automatici
 select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
 
--- Il primo genitore: gli altri li aggiunge dall'app (Impostazioni › Famiglia)
+-- Il primo genitore (la stessa email del punto 1).
+-- Gli altri li aggiungi dall'app: Impostazioni › Famiglia.
 insert into public.members (name, email, role, color)
-values ('<Nome>', '<email-con-cui-entra>', 'genitore', '#2f6f4f');
+values ('<Nome>', '<email>', 'genitore', '#2f6f4f');
 ```
 
 ## 7. Installare l'app sui telefoni
@@ -91,8 +92,12 @@ Su ogni telefono Android:
 
 1. Apri l'indirizzo dell'app con **Chrome**.
 2. Menu ⋮ › **Installa app** (o *Aggiungi a schermata Home*).
-3. Apri l'app dall'icona, entra con la tua email e il codice ricevuto.
+3. Apri l'app dall'icona ed entra con email e password.
 4. **Impostazioni › Attiva notifiche** e accetta.
+
+Il primo genitore aggiunge gli altri da **Impostazioni › Famiglia**, scegliendo per ognuno una password
+iniziale da comunicargli. Ognuno può poi cambiarla da **Impostazioni › La mia password**.
+Se qualcuno la dimentica, un genitore gliene imposta una nuova con **Password** accanto al suo nome.
 
 ## Cosa succede da solo, dopo
 
