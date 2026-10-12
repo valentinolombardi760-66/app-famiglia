@@ -1,0 +1,41 @@
+# Weekly encrypted copy of all family data, kept for 90 days as a workflow
+# artifact. The repository is public, so the copy is encrypted with
+# BACKUP_PASSPHRASE: without it the file is unreadable.
+name: Backup settimanale
+
+on:
+  schedule:
+    - cron: '30 2 * * 1'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Controlla la configurazione
+        run: |
+          if [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::Manca BACKUP_PASSPHRASE: senza, il backup non verrebbe cifrato. Vedi docs/CONFIGURAZIONE.md."
+            exit 1
+          fi
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.118.0
+      - run: supabase link --project-ref "$PROJECT_REF"
+      - name: Esporta e cifra i dati
+        run: |
+          supabase db dump --linked --data-only -f backup.sql
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 -o "backup-$(date +%F).sql.gpg" backup.sql
+          rm backup.sql
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backup-${{ github.run_id }}
+          path: backup-*.sql.gpg
+          retention-days: 90
