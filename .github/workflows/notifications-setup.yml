@@ -1,0 +1,41 @@
+# Run once, by hand, to create the keys used to sign push notifications.
+# The private key goes straight into Supabase and is never shown.
+# Running it again creates new keys: every phone must then re-enable
+# notifications from Impostazioni.
+name: Configura notifiche
+
+on:
+  workflow_dispatch:
+    inputs:
+      conferma:
+        description: 'Scrivi CREA per generare le chiavi (se esistevano già, i telefoni dovranno riattivare le notifiche)'
+        required: true
+
+jobs:
+  keys:
+    runs-on: ubuntu-latest
+    if: inputs.conferma == 'CREA'
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.118.0
+      - name: Genera e salva le chiavi
+        run: |
+          keys=$(npx --yes web-push@3.6.7 generate-vapid-keys --json)
+          public=$(echo "$keys" | jq -r .publicKey)
+          private=$(echo "$keys" | jq -r .privateKey)
+          echo "::add-mask::$private"
+          supabase secrets set --project-ref "$PROJECT_REF" \
+            "VAPID_PUBLIC_KEY=$public" "VAPID_PRIVATE_KEY=$private"
+          {
+            echo "## Chiave pubblica per le notifiche"
+            echo
+            echo "Copiala nella variabile **VITE_VAPID_PUBLIC_KEY** del repository, poi rilancia \"Pubblica\":"
+            echo
+            echo '```'
+            echo "$public"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

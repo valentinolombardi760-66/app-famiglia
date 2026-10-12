@@ -1,0 +1,6 @@
+# Only what the deploy workflow needs; everything else uses Supabase defaults.
+project_id = "app-famiglia"
+
+[functions.send-reminders]
+# Called by pg_cron without a user token; see the comment in its index.ts.
+verify_jwt = false
