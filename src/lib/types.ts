@@ -44,3 +44,10 @@ export interface Allowance {
   given_on: string
   note: string | null
 }
+
+export type { Chore, ChoreSchedule } from '../../supabase/functions/_shared/chores.ts'
+
+export interface ChoreCompletion {
+  chore_id: string
+  due_on: string
+}

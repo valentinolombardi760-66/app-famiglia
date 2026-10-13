@@ -1,10 +1,11 @@
-// Sends calendar reminders as push notifications.
+// Sends calendar and chore reminders as push notifications.
 // Called every 5 minutes by pg_cron (see migrations/*_reminders_schedule.sql).
 // Secrets: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY (set by the "Configura notifiche"
 // GitHub workflow); SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are built in.
 
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 import webpush from 'npm:web-push@3.6.7'
+import { completionKey, dueChoreReminders, type Chore } from '../_shared/chores.ts'
 import { dueReminders, type ReminderEvent } from '../_shared/reminders.ts'
 
 // Overlaps the 5-minute schedule so a late run doesn't miss anything;
@@ -32,18 +33,35 @@ Deno.serve(async () => {
 
   const columns =
     'id, title, all_day, location, starts_at, ends_at, recurrence, recurrence_weekdays, recurrence_until, reminder_minutes, remind_evening_before, event_members(member_id)'
-  const [oneOff, repeating] = await Promise.all([
+  const [oneOff, repeating, choreRows, completionRows] = await Promise.all([
     db.from('events').select(columns).eq('recurrence', 'none').gte('starts_at', windowStart.toISOString()).lte('starts_at', horizon),
     db.from('events').select(columns).neq('recurrence', 'none').lte('starts_at', horizon)
       .or(`recurrence_until.is.null,recurrence_until.gte.${yesterday}`),
+    db.from('chores').select('id, title, assigned_to, schedule, weekdays, due_on, starts_on'),
+    db.from('chore_completions').select('chore_id, due_on').gte('due_on', yesterday),
   ])
-  if (oneOff.error || repeating.error) {
-    return Response.json({ error: (oneOff.error ?? repeating.error)!.message }, { status: 500 })
-  }
+  const failed = oneOff.error ?? repeating.error ?? choreRows.error ?? completionRows.error
+  if (failed) return Response.json({ error: failed.message }, { status: 500 })
 
   type Row = ReminderEvent & { event_members: { member_id: string }[] }
   const events = [...(oneOff.data ?? []), ...(repeating.data ?? [])] as unknown as Row[]
-  const due = dueReminders(events, windowStart, now)
+  const done = new Set((completionRows.data ?? []).map((c) => completionKey(c.chore_id, c.due_on)))
+
+  // recipients null = the whole family.
+  type Outgoing = { key: string; title: string; body: string; url: string; recipients: Set<string> | null }
+  const due: Outgoing[] = [
+    ...dueReminders(events, windowStart, now).map((r) => {
+      const event = events.find((e) => e.id === r.eventId)!
+      const members = event.event_members.map((m) => m.member_id)
+      // An event for nobody in particular is for the whole family.
+      return { ...r, url: './#calendario', recipients: members.length > 0 ? new Set(members) : null }
+    }),
+    ...dueChoreReminders((choreRows.data ?? []) as Chore[], done, windowStart, now).map((r) => ({
+      ...r,
+      url: './#faccende',
+      recipients: new Set([r.assignedTo]),
+    })),
+  ]
   if (due.length === 0) return Response.json({ sent: 0 })
 
   // Claim the reminders first: only keys inserted by this run get sent, so two
@@ -61,11 +79,8 @@ Deno.serve(async () => {
   let sent = 0
   const gone: string[] = []
   for (const reminder of due.filter((d) => claimedKeys.has(d.key))) {
-    const event = events.find((e) => e.id === reminder.eventId)!
-    const recipients = new Set(event.event_members.map((m) => m.member_id))
-    // An event for nobody in particular is for the whole family.
-    const targets = (subs ?? []).filter((s) => recipients.size === 0 || recipients.has(s.member_id))
-    const payload = JSON.stringify({ title: reminder.title, body: reminder.body, tag: reminder.key, url: './#calendario' })
+    const targets = (subs ?? []).filter((s) => reminder.recipients === null || reminder.recipients.has(s.member_id))
+    const payload = JSON.stringify({ title: reminder.title, body: reminder.body, tag: reminder.key, url: reminder.url })
     for (const s of targets) {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, {

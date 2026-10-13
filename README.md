@@ -1,8 +1,8 @@
 # Famiglia
 
 App per la famiglia, da installare sui telefoni: calendario degli impegni con
-promemoria, spese di casa settimanali (solo genitori) e paghette dei figli.
-Presto anche le faccende di casa.
+promemoria, spese di casa settimanali (solo genitori), paghette dei figli e
+faccende di casa assegnate ai figli, con promemoria alle 19:00 se non sono fatte.
 
 - **Configurazione iniziale:** [docs/CONFIGURAZIONE.md](docs/CONFIGURAZIONE.md)
 - **Progetto e decisioni:** discussi nel progetto Claude "app gestione famiglia".

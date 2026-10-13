@@ -5,7 +5,7 @@ import type { Member } from './lib/types'
 import { Login } from './pages/Login'
 import { Calendario } from './pages/Calendario'
 import { Impostazioni } from './pages/Impostazioni'
-import { InArrivo } from './pages/InArrivo'
+import { Faccende, MieFaccende } from './pages/Faccende'
 import { MiaPaghetta, Spese } from './pages/Spese'
 
 type Tab = 'calendario' | 'spese' | 'faccende' | 'impostazioni'
@@ -82,9 +82,8 @@ export function App() {
         {tab === 'calendario' && <Calendario me={me} members={members} />}
         {tab === 'spese' &&
           (me.role === 'genitore' ? <Spese me={me} members={members} /> : <MiaPaghetta me={me} />)}
-        {tab === 'faccende' && (
-          <InArrivo title="Faccende" text="Qui ognuno vedrà i propri compiti di casa. Arriva in una prossima versione." />
-        )}
+        {tab === 'faccende' &&
+          (me.role === 'genitore' ? <Faccende me={me} members={members} /> : <MieFaccende me={me} />)}
         {tab === 'impostazioni' && <Impostazioni me={me} members={members} onMembersChanged={loadMembers} />}
       </main>
       <nav className="tabbar">

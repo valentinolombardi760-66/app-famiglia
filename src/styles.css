@@ -165,3 +165,38 @@ button.chip.on { background: var(--accent); border-color: var(--accent); color: 
 .totals li.muted span { text-align: right; }
 .spaced { margin: 0.75rem 0; }
 [hidden] { display: none !important; }
+
+.chore-grid { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.chore-grid li { display: flex; flex-direction: column; gap: 0.3rem; }
+.chore-grid .chore-name {
+  background: none; color: var(--text); padding: 0; min-height: auto; text-align: left; font-weight: 600;
+  display: flex; flex-direction: column;
+}
+.chore-grid .chore-name .small { font-weight: 400; }
+.cells { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.25rem; }
+.cell {
+  min-height: 34px; padding: 0; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+  background: var(--bg); color: var(--muted); border: 1px solid var(--line);
+}
+.cell.none { visibility: hidden; }
+.cell.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cell.missed { border-color: var(--danger); color: var(--danger); }
+.cell.today { border-color: var(--accent); border-width: 2px; }
+.cells.head span { text-align: center; font-size: 0.75rem; color: var(--muted); }
+.son-head { display: flex; justify-content: space-between; align-items: baseline; }
+.todo-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.todo {
+  width: 100%; text-align: left; background: var(--surface); color: var(--text); font-weight: 400;
+  border: 1px solid var(--line); border-radius: 14px; padding: 0.7rem 0.8rem;
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0.75rem;
+}
+.todo > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.todo .box {
+  width: 1.8rem; height: 1.8rem; border-radius: 50%; border: 2px solid var(--line);
+  display: grid; place-items: center; font-size: 1rem; color: #fff;
+}
+.todo.done .box { background: var(--accent); border-color: var(--accent); }
+.todo.done strong { text-decoration: line-through; color: var(--muted); }
+.todo.late { border-color: var(--danger); }
+.todo.late .small { color: var(--danger); }
+.fab-clear { padding-right: 4.5rem; }

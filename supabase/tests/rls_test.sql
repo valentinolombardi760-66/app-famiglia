@@ -188,3 +188,66 @@ set role anon;
 select pg_temp.expect_denied($$ select * from expenses $$, 'anonymous reading expenses');
 select pg_temp.expect_denied($$ select * from allowances $$, 'anonymous reading pocket money');
 reset role;
+
+-- Chores: parents assign them to sons, each son sees and ticks only his own.
+select pg_temp.login('laura@example.com');
+set role authenticated;
+insert into chores (id, title, assigned_to, schedule, weekdays, created_by) values
+  ('00000000-0000-0000-0000-0000000000c1', 'Lavastoviglie', '00000000-0000-0000-0000-000000000003', 'days', '{1,3,5}', my_member_id()),
+  ('00000000-0000-0000-0000-0000000000c2', 'Portare giù la spazzatura', '00000000-0000-0000-0000-000000000004', 'daily', null, my_member_id());
+select pg_temp.expect((select count(*) from chores) = 2, 'parent assigns chores');
+select pg_temp.expect_denied(
+  $$ insert into chores (title, assigned_to, schedule, created_by)
+     values ('Bollette', '00000000-0000-0000-0000-000000000002', 'daily', my_member_id()) $$,
+  'chore for a parent');
+select pg_temp.expect_denied(
+  $$ insert into chores (title, assigned_to, schedule, created_by)
+     values ('Senza data', '00000000-0000-0000-0000-000000000003', 'once', my_member_id()) $$,
+  'one-off chore without a due date');
+select pg_temp.expect_denied(
+  $$ insert into chores (title, assigned_to, schedule, weekdays, created_by)
+     values ('Due giorni', '00000000-0000-0000-0000-000000000003', 'weekly', '{1,2}', my_member_id()) $$,
+  'weekly chore with two deadlines');
+reset role;
+
+select pg_temp.login('diego@example.com');
+set role authenticated;
+select pg_temp.expect((select count(*) from chores) = 1, 'son sees only his chores');
+insert into chore_completions (chore_id, due_on, done_by)
+values ('00000000-0000-0000-0000-0000000000c1', '2026-10-12', my_member_id());
+select pg_temp.expect((select count(*) from chore_completions) = 1, 'son ticks his chore');
+select pg_temp.expect_denied(
+  $$ insert into chore_completions (chore_id, due_on, done_by)
+     values ('00000000-0000-0000-0000-0000000000c2', '2026-10-12', my_member_id()) $$,
+  'son ticking his brother''s chore');
+select pg_temp.expect_denied(
+  $$ insert into chores (title, assigned_to, schedule, created_by)
+     values ('Niente', my_member_id(), 'daily', my_member_id()) $$,
+  'son creating a chore');
+update chores set title = 'Fatto da solo';
+delete from chores;
+reset role;
+select pg_temp.expect((select count(*) from chores) = 2, 'son cannot edit or delete chores');
+select pg_temp.expect((select title from chores where id = '00000000-0000-0000-0000-0000000000c1') = 'Lavastoviglie', 'son cannot rename chores');
+
+select pg_temp.login('alessio@example.com');
+set role authenticated;
+select pg_temp.expect((select count(*) from chore_completions) = 0, 'brother cannot see completions of others');
+delete from chore_completions;
+reset role;
+select pg_temp.expect((select count(*) from chore_completions) = 1, 'brother cannot untick others');
+
+select pg_temp.login('emanuele@example.com');
+set role authenticated;
+select pg_temp.expect((select count(*) from chore_completions) = 1, 'parent sees who did what');
+delete from chore_completions;
+select pg_temp.expect((select count(*) from chore_completions) = 0, 'parent unticks a chore');
+reset role;
+
+select pg_temp.login('stranger@example.com');
+set role authenticated;
+select pg_temp.expect((select count(*) from chores) = 0, 'stranger sees no chores');
+reset role;
+set role anon;
+select pg_temp.expect_denied($$ select * from chores $$, 'anonymous reading chores');
+reset role;
