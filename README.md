@@ -1,4 +1,4 @@
-# Famiglia
+# OnlyFam.ly
 
 App per la famiglia, da installare sui telefoni: calendario degli impegni con
 promemoria, spese di casa settimanali (solo genitori), paghette dei figli e

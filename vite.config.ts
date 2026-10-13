@@ -16,14 +16,14 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifest: {
-        name: 'Famiglia',
-        short_name: 'Famiglia',
+        name: 'OnlyFam.ly',
+        short_name: 'OnlyFam.ly',
         description: 'Impegni, spese e faccende di casa',
         lang: 'it',
         start_url: base,
         scope: base,
         display: 'standalone',
-        background_color: '#ffffff',
+        background_color: '#f8f6f1',
         theme_color: '#2f6f4f',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },

@@ -27,7 +27,7 @@ export function Login() {
   return (
     <main className="centered login">
       <img src="icons/icon-192.png" alt="" width={72} height={72} />
-      <h1>Famiglia</h1>
+      <h1>OnlyFam.ly</h1>
       <form onSubmit={signIn}>
         <label>
           Email

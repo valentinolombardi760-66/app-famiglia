@@ -18,13 +18,13 @@ interface PushPayload {
 }
 
 self.addEventListener('push', (event) => {
-  const data: PushPayload = event.data?.json() ?? { title: 'Famiglia', body: '' }
+  const data: PushPayload = event.data?.json() ?? { title: 'OnlyFam.ly', body: '' }
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
       tag: data.tag,
       icon: 'icons/icon-192.png',
-      badge: 'icons/icon-192.png',
+      badge: 'icons/badge-96.png',
       data: { url: data.url ?? './' },
     }),
   )
