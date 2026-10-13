@@ -21,7 +21,7 @@ da aprire con Chrome su ogni telefono.
 3. Crea un token per la pubblicazione automatica: in alto a destra, avatar ›
    **Account preferences › Access Tokens › Generate new token**, nome `github`, scadenza *Never*.
    Se il modulo chiede i permessi, limita il token al progetto `app-famiglia` e scegli:
-   - *Read*: Project Settings, API Keys, API Key Secrets
+   - *Read*: Project Settings, API Keys, API Key Secrets, Connection Pooling (la voce sul *pooling*)
    - *Read-write*: Database, Migrations, Edge Functions, Edge Function Secrets
 
    Supabase lo mostra una volta sola: copialo subito nel segreto GitHub del punto 3.
