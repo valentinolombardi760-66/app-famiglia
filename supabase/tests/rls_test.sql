@@ -113,3 +113,78 @@ select pg_temp.expect_denied(
 select pg_temp.expect_denied($$ select * from sent_reminders $$, 'reading sent reminders');
 reset role;
 
+
+-- Household expenses: parents only.
+select pg_temp.login('laura@example.com');
+set role authenticated;
+insert into expenses (amount_cents, category, spent_on, paid_by, created_by)
+values (4250, 'spesa', '2026-10-13', '00000000-0000-0000-0000-000000000002', my_member_id());
+select pg_temp.expect((select count(*) from expenses) = 1, 'parent adds an expense');
+select pg_temp.expect_denied(
+  $$ insert into expenses (amount_cents, category, created_by)
+     values (100, 'spesa', '00000000-0000-0000-0000-000000000002') $$,
+  'parent adding an expense as the other parent');
+select pg_temp.expect_denied(
+  $$ insert into expenses (amount_cents, category, created_by) values (100, 'gioielli', my_member_id()) $$,
+  'expense with an unknown category');
+select pg_temp.expect_denied(
+  $$ insert into expenses (amount_cents, category, created_by) values (0, 'spesa', my_member_id()) $$,
+  'expense of zero');
+reset role;
+
+select pg_temp.login('emanuele@example.com');
+set role authenticated;
+select pg_temp.expect((select count(*) from expenses) = 1, 'other parent sees expenses');
+update expenses set amount_cents = 4300;
+select pg_temp.expect((select amount_cents from expenses) = 4300, 'other parent edits an expense');
+reset role;
+
+select pg_temp.login('diego@example.com');
+set role authenticated;
+select pg_temp.expect((select count(*) from expenses) = 0, 'son cannot see expenses');
+select pg_temp.expect_denied(
+  $$ insert into expenses (amount_cents, category, created_by) values (100, 'svago', my_member_id()) $$,
+  'son adding an expense');
+update expenses set amount_cents = 1;
+delete from expenses;
+reset role;
+select pg_temp.expect((select amount_cents from expenses) = 4300, 'son cannot edit or delete expenses');
+
+-- Pocket money: parents record it, each son sees only his own.
+select pg_temp.login('laura@example.com');
+set role authenticated;
+insert into allowances (member_id, amount_cents, given_on, created_by) values
+  ('00000000-0000-0000-0000-000000000003', 1000, '2026-10-12', my_member_id()),
+  ('00000000-0000-0000-0000-000000000004', 500, '2026-10-12', my_member_id());
+select pg_temp.expect((select count(*) from allowances) = 2, 'parent records pocket money');
+select pg_temp.expect_denied(
+  $$ insert into allowances (member_id, amount_cents, created_by)
+     values ('00000000-0000-0000-0000-000000000002', 1000, my_member_id()) $$,
+  'pocket money for a parent');
+select pg_temp.expect_denied(
+  $$ update allowances set member_id = '00000000-0000-0000-0000-000000000002' $$,
+  'moving pocket money to a parent');
+reset role;
+
+select pg_temp.login('diego@example.com');
+set role authenticated;
+select pg_temp.expect((select count(*) from allowances) = 1, 'son sees only his own pocket money');
+select pg_temp.expect((select amount_cents from allowances) = 1000, 'son sees his amount');
+select pg_temp.expect_denied(
+  $$ insert into allowances (member_id, amount_cents, created_by) values (my_member_id(), 5000, my_member_id()) $$,
+  'son giving himself pocket money');
+update allowances set amount_cents = 99999;
+delete from allowances;
+reset role;
+select pg_temp.expect((select sum(amount_cents) from allowances) = 1500, 'son cannot edit or delete pocket money');
+
+select pg_temp.login('stranger@example.com');
+set role authenticated;
+select pg_temp.expect((select count(*) from expenses) = 0, 'stranger sees no expenses');
+select pg_temp.expect((select count(*) from allowances) = 0, 'stranger sees no pocket money');
+reset role;
+
+set role anon;
+select pg_temp.expect_denied($$ select * from expenses $$, 'anonymous reading expenses');
+select pg_temp.expect_denied($$ select * from allowances $$, 'anonymous reading pocket money');
+reset role;

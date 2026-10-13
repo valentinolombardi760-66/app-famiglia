@@ -49,3 +49,23 @@ export function fromInputs(date: string, time: string): Date {
   const [h, min] = time.split(':').map(Number)
   return fromWallTime(y, m, d, h, min)
 }
+
+const MONTHS_SHORT = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic']
+
+/** "YYYY-MM-DD" → "lun 13 ott". */
+export function formatDayKey(key: string): string {
+  const [y, m, d] = key.split('-').map(Number)
+  const weekday = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7
+  return `${WEEKDAYS_SHORT[weekday].toLowerCase()} ${d} ${MONTHS_SHORT[m - 1]}`
+}
+
+/** Week range label for a "YYYY-MM-DD" Monday. */
+export function formatWeekRangeKey(key: string): string {
+  return formatWeekRange(fromInputs(key, '12:00'))
+}
+
+export function formatMonthKey(key: string): string {
+  const [y, m] = key.split('-').map(Number)
+  const name = MONTHS[m - 1]
+  return `${name[0].toUpperCase()}${name.slice(1)} ${y}`
+}

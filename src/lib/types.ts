@@ -1,4 +1,5 @@
 import type { Recurrence } from '../../supabase/functions/_shared/recurrence.ts'
+import type { Category } from './money'
 
 export type Role = 'genitore' | 'figlio'
 
@@ -25,4 +26,21 @@ export interface CalendarEvent {
   remind_evening_before: boolean
   created_by: string
   event_members: { member_id: string }[]
+}
+
+export interface Expense {
+  id: string
+  amount_cents: number
+  category: Category
+  spent_on: string
+  paid_by: string | null
+  note: string | null
+}
+
+export interface Allowance {
+  id: string
+  member_id: string
+  amount_cents: number
+  given_on: string
+  note: string | null
 }

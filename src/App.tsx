@@ -6,6 +6,7 @@ import { Login } from './pages/Login'
 import { Calendario } from './pages/Calendario'
 import { Impostazioni } from './pages/Impostazioni'
 import { InArrivo } from './pages/InArrivo'
+import { MiaPaghetta, Spese } from './pages/Spese'
 
 type Tab = 'calendario' | 'spese' | 'faccende' | 'impostazioni'
 const TABS: Tab[] = ['calendario', 'spese', 'faccende', 'impostazioni']
@@ -79,12 +80,8 @@ export function App() {
     <div className="app">
       <main className="content">
         {tab === 'calendario' && <Calendario me={me} members={members} />}
-        {tab === 'spese' && (
-          <InArrivo
-            title={me.role === 'genitore' ? 'Spese e paghette' : 'La mia paghetta'}
-            text="Qui terrete traccia delle spese settimanali e delle paghette. Arriva nella prossima versione."
-          />
-        )}
+        {tab === 'spese' &&
+          (me.role === 'genitore' ? <Spese me={me} members={members} /> : <MiaPaghetta me={me} />)}
         {tab === 'faccende' && (
           <InArrivo title="Faccende" text="Qui ognuno vedrà i propri compiti di casa. Arriva in una prossima versione." />
         )}

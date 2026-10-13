@@ -141,3 +141,27 @@ button.chip.on { background: var(--accent); border-color: var(--accent); color: 
 .members { list-style: none; padding: 0; margin: 0 0 1rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .members li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem; }
 .member-actions { display: flex; flex-direction: column; align-items: flex-end; }
+
+.summary .big { font-size: 1.9rem; font-weight: 700; margin: 0; font-variant-numeric: tabular-nums; }
+.summary p { margin: 0.15rem 0; }
+.amount { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
+
+.bars { list-style: none; padding: 0; margin: 0.75rem 0 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.bars li { display: grid; grid-template-columns: 1fr auto; row-gap: 0.25rem; font-size: 0.9rem; }
+.bars .bar { grid-column: 1 / -1; height: 0.45rem; border-radius: 999px; background: var(--accent); }
+
+.money-list { list-style: none; padding: 0; margin: 0.75rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.money-item {
+  width: 100%; text-align: left; background: var(--surface); color: var(--text); font-weight: 400;
+  border: 1px solid var(--line); border-radius: 14px; padding: 0.7rem 0.8rem;
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem;
+}
+.money-item > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.money-item strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-cell { font-size: 1.4rem; }
+
+.totals { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.totals li { display: grid; grid-template-columns: 1fr 6rem 6rem; align-items: center; gap: 0.5rem; }
+.totals li.muted span { text-align: right; }
+.spaced { margin: 0.75rem 0; }
+[hidden] { display: none !important; }
