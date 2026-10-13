@@ -25,17 +25,14 @@ const AMOUNT_ERROR = `Scrivi un importo valido, per esempio 12,50 (massimo ${MAX
 
 interface ExpenseProps {
   me: Member
-  members: Member[]
   expense: Expense | null
   today: string
   onClose: (changed: boolean) => void
 }
 
-export function SpesaForm({ me, members, expense, today, onClose }: ExpenseProps) {
-  const parents = members.filter((m) => m.role === 'genitore')
+export function SpesaForm({ me, expense, today, onClose }: ExpenseProps) {
   const [amount, setAmount] = useState(expense ? centsToInput(expense.amount_cents) : '')
   const [category, setCategory] = useState<Category>(expense?.category ?? 'spesa')
-  const [paidBy, setPaidBy] = useState(expense ? (expense.paid_by ?? '') : me.id)
   const [day, setDay] = useState(expense?.spent_on ?? today)
   const [note, setNote] = useState(expense?.note ?? '')
   const [busy, setBusy] = useState(false)
@@ -47,7 +44,7 @@ export function SpesaForm({ me, members, expense, today, onClose }: ExpenseProps
     if (cents === null) return setError(AMOUNT_ERROR)
     setBusy(true)
     setError(null)
-    const row = { amount_cents: cents, category, spent_on: day, paid_by: paidBy || null, note: note.trim() || null }
+    const row = { amount_cents: cents, category, spent_on: day, note: note.trim() || null }
     const { error } = expense
       ? await supabase.from('expenses').update(row).eq('id', expense.id)
       : await supabase.from('expenses').insert({ ...row, created_by: me.id })
@@ -90,23 +87,10 @@ export function SpesaForm({ me, members, expense, today, onClose }: ExpenseProps
           ))}
         </div>
       </div>
-      <div className="row">
-        <label>
-          Pagato da
-          <select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
-            {parents.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-            <option value="">Non specificato</option>
-          </select>
-        </label>
-        <label>
-          Data
-          <input type="date" required max={today} value={day} onChange={(e) => setDay(e.target.value)} />
-        </label>
-      </div>
+      <label>
+        Data
+        <input type="date" required max={today} value={day} onChange={(e) => setDay(e.target.value)} />
+      </label>
       <label>
         Nota
         <input value={note} maxLength={200} placeholder="Facoltativa" onChange={(e) => setNote(e.target.value)} />

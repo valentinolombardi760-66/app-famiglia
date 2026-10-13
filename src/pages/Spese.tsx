@@ -38,7 +38,7 @@ export function Spese({ me, members }: { me: Member; members: Member[] }) {
         </div>
       </header>
       {view === 'spese' ? (
-        <SpeseSettimana me={me} members={members} onForm={setFormOpen} />
+        <SpeseSettimana me={me} onForm={setFormOpen} />
       ) : (
         <Paghette me={me} members={members} onForm={setFormOpen} />
       )}
@@ -46,7 +46,7 @@ export function Spese({ me, members }: { me: Member; members: Member[] }) {
   )
 }
 
-function SpeseSettimana({ me, members, onForm }: { me: Member; members: Member[]; onForm: (open: boolean) => void }) {
+function SpeseSettimana({ me, onForm }: { me: Member; onForm: (open: boolean) => void }) {
   const today = toDateKey(new Date())
   const [weekStart, setWeekStart] = useState(() => weekStartKey(today))
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -61,7 +61,7 @@ function SpeseSettimana({ me, members, onForm }: { me: Member; members: Member[]
     setLoading(true)
     const { data, error } = await supabase
       .from('expenses')
-      .select('id, amount_cents, category, spent_on, paid_by, note')
+      .select('id, amount_cents, category, spent_on, note')
       .gte('spent_on', addDaysKey(weekStart, -7))
       .lt('spent_on', addDaysKey(weekStart, 7))
       .order('spent_on', { ascending: false })
@@ -78,13 +78,10 @@ function SpeseSettimana({ me, members, onForm }: { me: Member; members: Member[]
 
   const summary = useMemo(() => summarizeWeek(expenses, weekStart), [expenses, weekStart])
   const thisWeek = expenses.filter((e) => e.spent_on >= weekStart && e.spent_on < weekEnd)
-  const byId = new Map(members.map((m) => [m.id, m]))
-
   if (editing) {
     return (
       <SpesaForm
         me={me}
-        members={members}
         expense={editing === 'new' ? null : editing}
         today={today}
         onClose={(changed) => {
@@ -152,10 +149,7 @@ function SpeseSettimana({ me, members, onForm }: { me: Member; members: Member[]
               </span>
               <span>
                 <strong>{e.note || CATEGORY.get(e.category)?.label}</strong>
-                <span className="muted small">
-                  {formatDayKey(e.spent_on)}
-                  {e.paid_by && byId.get(e.paid_by) ? ` · ${byId.get(e.paid_by)!.name}` : ''}
-                </span>
+                <span className="muted small">{formatDayKey(e.spent_on)}</span>
               </span>
               <span className="amount">{formatEuro(e.amount_cents)}</span>
             </button>
