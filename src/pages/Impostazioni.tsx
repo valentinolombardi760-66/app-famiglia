@@ -56,7 +56,7 @@ export function Impostazioni({ me, members, onMembersChanged }: Props) {
         )}
         {push === 'denied' && (
           <p className="muted">
-            Le notifiche sono bloccate. Riattivale dalle impostazioni del telefono: App › Chrome (o Famiglia) › Notifiche.
+            Le notifiche sono bloccate. Riattivale dalle impostazioni del telefono: App › Chrome (o OnlyFam.ly) › Notifiche.
           </p>
         )}
         {(push === 'on' || push === 'off') && (
