@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { Member, Role } from '../lib/types'
 import { currentPushState, disablePush, enablePush, type PushState } from '../lib/push'
 import { familyAdmin } from '../lib/family'
+import { MODES, THEMES, loadLook, saveLook, type Look } from '../lib/theme'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '../../supabase/functions/_shared/family.ts'
 
 interface Props {
@@ -69,6 +70,8 @@ export function Impostazioni({ me, members, onMembersChanged }: Props) {
         {pushError && <p className="error">{pushError}</p>}
       </div>
 
+      <Aspetto />
+
       <CambiaPassword />
 
       {me.role === 'genitore' && <Famiglia me={me} members={members} onChanged={onMembersChanged} />}
@@ -77,6 +80,50 @@ export function Impostazioni({ me, members, onMembersChanged }: Props) {
         Esci
       </button>
     </section>
+  )
+}
+
+function Aspetto() {
+  const [look, setLook] = useState<Look>(loadLook)
+
+  function change(next: Partial<Look>) {
+    const updated = { ...look, ...next }
+    setLook(updated)
+    saveLook(updated)
+  }
+
+  return (
+    <div className="card stack">
+      <div>
+        <h2>Aspetto</h2>
+        <p className="muted small">Vale solo su questo telefono: ognuno sceglie il suo.</p>
+      </div>
+      <div className="themes" role="group" aria-label="Tema">
+        {THEMES.map((t) => (
+          <button
+            key={t.key}
+            className={look.theme === t.key ? 'theme-option on' : 'theme-option'}
+            aria-pressed={look.theme === t.key}
+            onClick={() => change({ theme: t.key })}
+          >
+            <span className="swatch" style={{ background: `linear-gradient(135deg, ${t.colors[0]}, ${t.colors[1]})` }} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="segmented wide" role="group" aria-label="Chiaro o scuro">
+        {MODES.map((m) => (
+          <button
+            key={m.key}
+            className={look.mode === m.key ? 'on' : ''}
+            aria-pressed={look.mode === m.key}
+            onClick={() => change({ mode: m.key })}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 

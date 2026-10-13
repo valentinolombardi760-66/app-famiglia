@@ -33,7 +33,6 @@ export interface Expense {
   amount_cents: number
   category: Category
   spent_on: string
-  paid_by: string | null
   note: string | null
 }
 
