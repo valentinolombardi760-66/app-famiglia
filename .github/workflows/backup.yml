@@ -8,6 +8,11 @@ on:
     - cron: '30 2 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  # Lets the last step keep this schedule switched on.
+  actions: write
+
 jobs:
   backup:
     runs-on: ubuntu-latest
@@ -39,3 +44,11 @@ jobs:
           name: backup-${{ github.run_id }}
           path: backup-*.sql.gpg
           retention-days: 90
+      # GitHub switches off scheduled workflows in public repositories after 60
+      # days without commits. Re-enabling it on every run resets that clock,
+      # so the backup keeps running even when nobody changes the app.
+      - name: Tieni attivo il backup settimanale
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/backup.yml/enable"

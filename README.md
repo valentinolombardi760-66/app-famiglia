@@ -1,17 +1,21 @@
 # OnlyFam.ly
 
-App per la famiglia, da installare sui telefoni: calendario degli impegni con
-promemoria, spese di casa settimanali (solo genitori), paghette dei figli e
-faccende di casa assegnate ai figli, con promemoria alle 19:00 se non sono fatte.
+App per la famiglia, da installare sui telefoni: una schermata "Oggi" con quello
+che conta adesso, calendario degli impegni (anche sport e visite, con chi
+accompagna e cosa portare) con promemoria e avviso delle sovrapposizioni, spese
+di casa settimanali (solo genitori), paghette dei figli e faccende di casa
+assegnate ai figli, con promemoria alle 19:00 se non sono fatte.
 
 - **Configurazione iniziale:** [docs/CONFIGURAZIONE.md](docs/CONFIGURAZIONE.md)
+- **Ripristinare un backup:** [docs/RIPRISTINO.md](docs/RIPRISTINO.md)
+- **Prova sul telefono dopo un aggiornamento:** [docs/TEST.md](docs/TEST.md)
 - **Progetto e decisioni:** discussi nel progetto Claude "app gestione famiglia".
 
 ## Come è fatta
 
 | Parte | Dove |
 |---|---|
-| App (React + Vite, installabile come PWA) | `src/` |
+| App (React + Vite, installabile come PWA) | `src/pages/` schermate, `src/components/` pezzi riusati, `src/lib/` dati e logica |
 | Database e regole di accesso (Supabase / Postgres) | `supabase/migrations/` |
 | Invio dei promemoria (Supabase Edge Function) | `supabase/functions/send-reminders/` |
 | Logica delle ripetizioni e dei promemoria, condivisa | `supabase/functions/_shared/` |

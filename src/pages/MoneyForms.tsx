@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Allowance, Expense, Member } from '../lib/types'
 import { CATEGORIES, MAX_EURO, parseEuro, type Category } from '../lib/money'
+import { friendlyError } from '../lib/errors'
+import { useUi } from '../components/ui'
 
 const centsToInput = (cents: number) => (cents / 100).toFixed(2).replace('.', ',')
 
@@ -35,6 +37,7 @@ export function SpesaForm({ me, expense, today, onClose }: ExpenseProps) {
   const [category, setCategory] = useState<Category>(expense?.category ?? 'spesa')
   const [day, setDay] = useState(expense?.spent_on ?? today)
   const [note, setNote] = useState(expense?.note ?? '')
+  const ui = useUi()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,16 +52,21 @@ export function SpesaForm({ me, expense, today, onClose }: ExpenseProps) {
       ? await supabase.from('expenses').update(row).eq('id', expense.id)
       : await supabase.from('expenses').insert({ ...row, created_by: me.id })
     setBusy(false)
-    if (error) return setError('Non è stato possibile salvare. Controlla la connessione e riprova.')
+    if (error) return setError(friendlyError(error))
+    ui.toast('Salvato.')
     onClose(true)
   }
 
   async function remove() {
-    if (!expense || !confirm('Eliminare questa spesa?')) return
+    if (!expense) return
     setBusy(true)
     const { error } = await supabase.from('expenses').delete().eq('id', expense.id)
     setBusy(false)
-    if (error) return setError('Non è stato possibile eliminare. Controlla la connessione e riprova.')
+    if (error) return setError(friendlyError(error, 'eliminare'))
+    ui.toast('Spesa eliminata.', async () => {
+      await supabase.from('expenses').insert({ ...expense, created_by: me.id })
+      onClose(true)
+    })
     onClose(true)
   }
 
@@ -121,6 +129,7 @@ export function PaghettaForm({ me, sons, allowance, today, onClose }: AllowanceP
   const [amount, setAmount] = useState(allowance ? centsToInput(allowance.amount_cents) : '')
   const [day, setDay] = useState(allowance?.given_on ?? today)
   const [note, setNote] = useState(allowance?.note ?? '')
+  const ui = useUi()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -136,16 +145,21 @@ export function PaghettaForm({ me, sons, allowance, today, onClose }: AllowanceP
       ? await supabase.from('allowances').update(row).eq('id', allowance.id)
       : await supabase.from('allowances').insert({ ...row, created_by: me.id })
     setBusy(false)
-    if (error) return setError('Non è stato possibile salvare. Controlla la connessione e riprova.')
+    if (error) return setError(friendlyError(error))
+    ui.toast('Salvato.')
     onClose(true)
   }
 
   async function remove() {
-    if (!allowance || !confirm('Eliminare questa paghetta?')) return
+    if (!allowance) return
     setBusy(true)
     const { error } = await supabase.from('allowances').delete().eq('id', allowance.id)
     setBusy(false)
-    if (error) return setError('Non è stato possibile eliminare. Controlla la connessione e riprova.')
+    if (error) return setError(friendlyError(error, 'eliminare'))
+    ui.toast('Paghetta eliminata.', async () => {
+      await supabase.from('allowances').insert({ ...allowance, created_by: me.id })
+      onClose(true)
+    })
     onClose(true)
   }
 

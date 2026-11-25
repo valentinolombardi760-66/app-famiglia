@@ -1,3 +1,4 @@
+import { addDaysToKey, weekdayOfKey } from '../../supabase/functions/_shared/chores.ts'
 // Money and week arithmetic for expenses and pocket money.
 // Amounts are integer cents; days are "YYYY-MM-DD" keys in the family's time zone.
 
@@ -29,25 +30,12 @@ export function parseEuro(text: string): number | null {
   return cents > 0 && cents <= MAX_EURO * 100 ? cents : null
 }
 
-function keyToUtc(key: string): Date {
-  const [y, m, d] = key.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d))
-}
-
-function utcToKey(date: Date): string {
-  return date.toISOString().slice(0, 10)
-}
-
-export function addDaysKey(key: string, n: number): string {
-  const d = keyToUtc(key)
-  d.setUTCDate(d.getUTCDate() + n)
-  return utcToKey(d)
-}
+// Day-key arithmetic lives in one place, shared with the reminders function.
+export const addDaysKey = addDaysToKey
 
 /** Monday of the week containing `key`. */
 export function weekStartKey(key: string): string {
-  const weekday = (keyToUtc(key).getUTCDay() + 6) % 7 // 0 = Monday
-  return addDaysKey(key, -weekday)
+  return addDaysToKey(key, 1 - weekdayOfKey(key))
 }
 
 export function monthStartKey(key: string): string {

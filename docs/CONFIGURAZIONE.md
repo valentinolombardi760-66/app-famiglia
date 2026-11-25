@@ -107,8 +107,9 @@ Se qualcuno la dimentica, un genitore gliene imposta una nuova con **Password** 
 
 Due cose da sapere:
 
-- Se il repository non riceve modifiche per 60 giorni, GitHub sospende il backup settimanale e manda un'email:
-  basta riattivarlo da **Actions**.
+- GitHub sospende i lavori programmati dei repository senza modifiche da 60 giorni: il backup si riattiva
+  da solo a ogni esecuzione. Se ricevi comunque un'email di sospensione, riattivalo da **Actions**.
+- Per rimettere i dati da un backup: [RIPRISTINO.md](RIPRISTINO.md).
 - Supabase mette in pausa i progetti gratuiti inutilizzati per una settimana.
   I controlli dei promemoria ogni 5 minuti dovrebbero bastare a tenerlo attivo; se ricevete un'email di pausa,
   riattivatelo dalla dashboard di Supabase.

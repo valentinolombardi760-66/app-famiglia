@@ -251,3 +251,88 @@ reset role;
 set role anon;
 select pg_temp.expect_denied($$ select * from chores $$, 'anonymous reading chores');
 reset role;
+
+-- ---------------------------------------------------------------------------
+-- Repetitions, event details, chores from today, removing members
+-- ---------------------------------------------------------------------------
+
+-- Diego's weekly training (created by Diego), and Laura's family dinner.
+select pg_temp.login('diego@example.com');
+set role authenticated;
+select save_event(null, 'Allenamento', '2026-11-03 18:00+01', '2026-11-03 19:30+01', false, 'Palestra', null,
+  'weekly', '{2,4}', null, '{60}', false, array['00000000-0000-0000-0000-000000000003'::uuid],
+  'sport', ' borsa ', '00000000-0000-0000-0000-000000000001') as training \gset
+select pg_temp.expect((select kind || '|' || bring from events where id = :'training') = 'sport|borsa', 'kind and what to bring saved');
+select pg_temp.expect((select driver_id from events where id = :'training') = '00000000-0000-0000-0000-000000000001', 'driver saved');
+reset role;
+
+-- His brother cannot cancel one of Diego's trainings.
+select pg_temp.login('alessio@example.com');
+set role authenticated;
+select pg_temp.expect_denied(format($$ select skip_occurrence(%L, '2026-11-26') $$, :'training'), 'brother skipping a repetition');
+select pg_temp.expect_denied(
+  format($$ select save_event(null, 'X', now(), now(), false, null, null, 'none', null, null, null, false, null,
+    'impegno', null, null, %L, '2026-11-26', 'only') $$, :'training'),
+  'brother splitting a repetition');
+reset role;
+
+-- Diego cancels one, restores it, then moves only the 26th.
+select pg_temp.login('diego@example.com');
+set role authenticated;
+select skip_occurrence(:'training', '2026-11-26');
+select skip_occurrence(:'training', '2026-11-26');
+select pg_temp.expect((select skipped_dates from events where id = :'training') = '{2026-11-26}', 'skipping twice keeps one date');
+select skip_occurrence(:'training', '2026-11-26', false);
+select pg_temp.expect((select cardinality(skipped_dates) from events where id = :'training') = 0, 'repetition restored');
+select save_event(null, 'Allenamento (spostato)', '2026-11-27 18:00+01', '2026-11-27 19:30+01', false, null, null,
+  'none', null, null, '{60}', false, array['00000000-0000-0000-0000-000000000003'::uuid],
+  'sport', null, null, :'training', '2026-11-26', 'only') as moved \gset
+select pg_temp.expect((select skipped_dates from events where id = :'training') = '{2026-11-26}', 'only this one: original skips the day');
+select pg_temp.expect((select recurrence from events where id = :'moved') = 'none', 'only this one: a one-off copy');
+-- From 1 December on, Wednesdays instead.
+select save_event(null, 'Allenamento', '2026-12-02 18:00+01', '2026-12-02 19:30+01', false, null, null,
+  'weekly', '{3}', null, '{60}', false, array['00000000-0000-0000-0000-000000000003'::uuid],
+  'sport', null, null, :'training', '2026-12-01', 'following') as wednesdays \gset
+select pg_temp.expect((select recurrence_until from events where id = :'training') = '2026-11-30', 'from here on: original ends the day before');
+select pg_temp.expect((select recurrence_weekdays from events where id = :'wednesdays') = '{3}', 'from here on: new series');
+select pg_temp.expect_denied(
+  format($$ select save_event(null, 'X', now(), now(), false, null, null, 'none', null, null, null, false, null,
+    'impegno', null, null, %L, '2026-11-26', 'only') $$, :'moved'),
+  'splitting an event that does not repeat');
+reset role;
+
+-- A chore changed from today keeps its past and moves today's tick.
+select pg_temp.login('laura@example.com');
+set role authenticated;
+insert into chores (id, title, assigned_to, schedule, starts_on, created_by) values
+  ('00000000-0000-0000-0000-0000000000c9', 'Cane', '00000000-0000-0000-0000-000000000004', 'daily',
+   (now() at time zone 'Europe/Rome')::date - 10, my_member_id());
+reset role;
+insert into chore_completions (chore_id, due_on, done_by) values
+  ('00000000-0000-0000-0000-0000000000c9', (now() at time zone 'Europe/Rome')::date - 3, '00000000-0000-0000-0000-000000000004'),
+  ('00000000-0000-0000-0000-0000000000c9', (now() at time zone 'Europe/Rome')::date, '00000000-0000-0000-0000-000000000004');
+
+select pg_temp.login('alessio@example.com');
+set role authenticated;
+select pg_temp.expect_denied(
+  $$ select change_chore_from_today('00000000-0000-0000-0000-0000000000c9', 'Cane', '00000000-0000-0000-0000-000000000004', 'days', '{1}', null, null) $$,
+  'son changing his chore');
+reset role;
+
+select pg_temp.login('laura@example.com');
+set role authenticated;
+select change_chore_from_today('00000000-0000-0000-0000-0000000000c9', 'Cane', '00000000-0000-0000-0000-000000000003',
+  'days', '{1,3,5}', null, null) as newchore \gset
+select pg_temp.expect((select ends_on from chores where id = '00000000-0000-0000-0000-0000000000c9') = (now() at time zone 'Europe/Rome')::date - 1, 'old chore ends yesterday');
+select pg_temp.expect((select assigned_to from chores where id = :'newchore') = '00000000-0000-0000-0000-000000000003', 'new chore for the new son');
+select pg_temp.expect((select count(*) from chore_completions where chore_id = '00000000-0000-0000-0000-0000000000c9') = 1, 'past tick stays on the old chore');
+select pg_temp.expect((select count(*) from chore_completions where chore_id = :'newchore') = 1, 'today''s tick moves to the new chore');
+select pg_temp.expect_denied(
+  $$ update chores set ends_on = starts_on - 5 where id = '00000000-0000-0000-0000-0000000000c9' $$,
+  'ending a chore before it started');
+reset role;
+
+-- Removing Diego keeps the events he created, without a creator.
+delete from members where id = '00000000-0000-0000-0000-000000000003';
+select pg_temp.expect((select count(*) from events where id = :'wednesdays') = 1, 'events survive their creator');
+select pg_temp.expect((select created_by from events where id = :'wednesdays') is null, 'creator cleared');

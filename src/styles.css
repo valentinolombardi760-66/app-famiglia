@@ -179,7 +179,7 @@ fieldset { border: none; padding: 0; margin: 0; display: flex; flex-direction: c
 .login form { display: flex; flex-direction: column; gap: 1rem; text-align: left; }
 
 .app { min-height: 100dvh; }
-.content { padding: 1rem 1rem calc(7rem + env(safe-area-inset-bottom)); max-width: 40rem; margin: 0 auto; }
+.content { padding: 1rem 1rem calc(11rem + env(safe-area-inset-bottom)); max-width: 40rem; margin: 0 auto; }
 .stack { display: flex; flex-direction: column; gap: 1rem; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.1rem; box-shadow: var(--shadow); }
@@ -190,7 +190,7 @@ fieldset { border: none; padding: 0; margin: 0; display: flex; flex-direction: c
 .tabbar {
   position: fixed; left: 0.75rem; right: 0.75rem; bottom: calc(0.6rem + env(safe-area-inset-bottom));
   max-width: 38rem; margin: 0 auto;
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.25rem; padding: 0.35rem;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.2rem; padding: 0.35rem;
   background: color-mix(in srgb, var(--surface) 82%, transparent);
   backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
   border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow);
@@ -228,9 +228,9 @@ fieldset { border: none; padding: 0; margin: 0; display: flex; flex-direction: c
 .day ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.45rem; }
 .event {
   width: 100%; text-align: left; background: var(--bg); color: var(--text); font-weight: 400;
-  display: grid; grid-template-columns: auto 1fr; column-gap: 0.75rem; row-gap: 0.2rem; padding: 0.65rem 0.75rem;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.2rem; padding: 0.65rem 0.75rem;
 }
-.event .time { font-weight: 800; font-variant-numeric: tabular-nums; grid-row: span 3; min-width: 3rem; color: var(--accent); }
+.event .time { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 0.85rem; color: var(--accent); }
 .event .title { font-weight: 700; }
 .event .place { color: var(--muted); font-size: 0.85rem; }
 .event .who { display: flex; flex-wrap: wrap; gap: 0.3rem; }
@@ -338,3 +338,66 @@ button.chip.on { background: var(--gradient); border-color: transparent; color: 
 .swatch { width: 2.4rem; height: 2.4rem; border-radius: 50%; box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.35); }
 .segmented.wide { width: 100%; }
 .segmented.wide button { flex: 1; }
+
+/* ---------------------------------------------------------------------------
+   Filters, overlaps, "Oggi"
+   --------------------------------------------------------------------------- */
+
+.filters { display: flex; flex-direction: column; gap: 0.45rem; margin: -0.25rem 0 1rem; }
+.filters .chips { gap: 0.35rem; }
+.dot { display: inline-block; width: 0.65rem; height: 0.65rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: 0.05em; flex: none; }
+button.chip.on .dot { box-shadow: 0 0 0 2px rgb(255 255 255 / 0.85); }
+button.chip.small { padding: 0.3rem 0.7rem; font-size: 0.82rem; min-height: 34px; }
+.day-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
+.day-head h2 { margin: 0; }
+button.icon.small { width: 2.1rem; height: 2.1rem; font-size: 1.15rem; box-shadow: none; border: 1px solid var(--line); }
+.warning {
+  background: color-mix(in srgb, #d97706 14%, var(--surface)); color: var(--text);
+  border: 1.5px solid color-mix(in srgb, #d97706 55%, transparent); border-radius: var(--radius-sm);
+  padding: 0.7rem 0.85rem; margin: 0 0 1rem; font-size: 0.92rem;
+}
+.warning ul { margin: 0.35rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.event.clash { box-shadow: inset 3px 0 0 #d97706; }
+
+.event .clash-note { font-size: 0.85rem; font-weight: 600; color: color-mix(in srgb, #b45309 80%, var(--text)); }
+.event .who .chip { display: inline-flex; align-items: center; }
+ul.plain { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+ul.plain .event { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.capital::first-letter { text-transform: uppercase; }
+.cal-header p { margin: 0; }
+.summary-link { width: 100%; text-align: left; color: var(--text); font-weight: 400; display: block; }
+.son-status { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+.son-status li { display: flex; flex-direction: column; gap: 0.1rem; }
+.son-status .ok { color: var(--accent); font-weight: 700; }
+.archived { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.archived li { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+.archived li > span { display: flex; flex-direction: column; min-width: 0; }
+
+details > summary { cursor: pointer; font-weight: 600; color: var(--accent); padding: 0.4rem 0; }
+details[open] > summary { margin-bottom: 0.6rem; }
+
+/* Member colors */
+.color-dot { width: 2.2rem; height: 2.2rem; min-height: auto; padding: 0; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 1.5px var(--line); }
+.color-dot.on { box-shadow: 0 0 0 2.5px var(--text); }
+.palette { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.25rem 0 0.5rem; }
+
+/* Toast and dialogs */
+.toast {
+  position: fixed; left: 1rem; right: 1rem; bottom: calc(6.6rem + env(safe-area-inset-bottom)); z-index: 20;
+  max-width: 36rem; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  background: var(--text); color: var(--bg); border-radius: var(--radius-sm); padding: 0.8rem 1rem;
+  box-shadow: var(--shadow); animation: pop 0.25s var(--ease) both; font-weight: 600;
+}
+.toast .link { color: var(--bg); text-decoration: underline; padding: 0.2rem 0.4rem; }
+.dialog-backdrop {
+  position: fixed; inset: 0; z-index: 30; background: rgb(0 0 0 / 0.45);
+  display: flex; align-items: flex-end; justify-content: center; padding: 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+.dialog {
+  width: 100%; max-width: 28rem; background: var(--surface); color: var(--text);
+  border-radius: var(--radius); padding: 1.2rem; box-shadow: var(--shadow); animation: pop 0.25s var(--ease) both;
+}
+.dialog h2 { margin: 0; font-size: 1.15rem; }
+.dialog p { margin: 0; }
+.dialog-actions { display: flex; flex-direction: column; gap: 0.5rem; }

@@ -1,19 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useResume } from '../lib/useResume'
+import { useUi } from '../components/ui'
+import { WeekNav } from '../components/WeekNav'
+import { friendlyError } from '../lib/errors'
 import { supabase } from '../lib/supabase'
 import type { Chore, ChoreCompletion, Member } from '../lib/types'
 import { toDateKey } from '../../supabase/functions/_shared/recurrence.ts'
-import { CHORE_REMINDER_HOUR, choreDueDates, completionKey } from '../../supabase/functions/_shared/chores.ts'
-import { WEEKDAYS_SHORT, formatDayKey, formatWeekRangeKey } from '../lib/dates'
+import { CHORE_REMINDER_HOUR, choreDueDates, completionKey, isArchived } from '../../supabase/functions/_shared/chores.ts'
+import { WEEKDAYS_LONG, WEEKDAYS_SHORT, formatDayKey, formatWeekRangeKey } from '../lib/dates'
 import { addDaysKey, weekStartKey } from '../lib/money'
 import { ChoreForm } from './ChoreForm'
 
-const CHORE_COLUMNS = 'id, title, assigned_to, schedule, weekdays, due_on, starts_on'
-const WEEKDAYS_LONG = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
+const CHORE_COLUMNS = 'id, title, assigned_to, schedule, weekdays, due_on, starts_on, ends_on'
 // How far back a son still sees deadlines he missed. Missed daily chores aren't
 // carried over (yesterday's dishes are gone): parents see them as ✗ instead.
 const LATE_DAYS = { once: 30, weekly: 7 }
 
 export function describeSchedule(c: Chore): string {
+  const base = scheduleText(c)
+  return c.ends_on && c.schedule !== 'once' ? `${base}, fino a ${formatDayKey(c.ends_on)}` : base
+}
+
+function scheduleText(c: Chore): string {
   const days = c.weekdays ?? []
   switch (c.schedule) {
     case 'daily':
@@ -48,7 +56,7 @@ async function setDone(me: Member, chore: Chore, day: string, done: boolean): Pr
   return !error || error.code === '23505'
 }
 
-function useChores(from: string, to: string) {
+export function useChores(from: string, to: string) {
   const [chores, setChores] = useState<Chore[] | null>(null)
   const [done, setDoneSet] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
@@ -64,6 +72,7 @@ function useChores(from: string, to: string) {
   useEffect(() => {
     void load()
   }, [load])
+  useResume(() => void load())
 
   // Optimistic: flip it right away, put it back if the database says no.
   const toggle = useCallback(async (me: Member, chore: Chore, day: string, wasDone: boolean) => {
@@ -90,7 +99,26 @@ export function Faccende({ me, members }: { me: Member; members: Member[] }) {
   const weekEnd = addDaysKey(weekStart, 7)
   const { chores, done, error, load, toggle } = useChores(weekStart, weekEnd)
   const [editing, setEditing] = useState<Chore | 'new' | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
+  const ui = useUi()
   const sons = members.filter((m) => m.role === 'figlio')
+  const archived = (chores ?? []).filter((c) => isArchived(c, today))
+
+  async function reactivate(c: Chore) {
+    // A fresh copy from today: the days it was archived don't count as missed.
+    const { error } = await supabase.from('chores').insert({
+      title: c.title,
+      assigned_to: c.assigned_to,
+      schedule: c.schedule,
+      weekdays: c.weekdays,
+      due_on: c.schedule === 'once' ? (c.due_on && c.due_on >= today ? c.due_on : today) : null,
+      starts_on: today,
+      created_by: me.id,
+    })
+    if (error) return ui.toast(friendlyError(error, 'riattivare'))
+    ui.toast(`«${c.title}» di nuovo attiva da oggi.`)
+    void load()
+  }
 
   if (editing) {
     return (
@@ -108,21 +136,17 @@ export function Faccende({ me, members }: { me: Member; members: Member[] }) {
   }
 
   const days = Array.from({ length: 7 }, (_, i) => addDaysKey(weekStart, i))
+  const weekEndDay = addDaysKey(weekEnd, -1)
 
   return (
     <section>
       <h1>Faccende</h1>
-      <div className="week-nav">
-        <button className="icon" aria-label="Settimana precedente" onClick={() => setWeekStart(addDaysKey(weekStart, -7))}>
-          ‹
-        </button>
-        <button className="link" onClick={() => setWeekStart(weekStartKey(today))}>
-          {formatWeekRangeKey(weekStart)}
-        </button>
-        <button className="icon" aria-label="Settimana successiva" onClick={() => setWeekStart(weekEnd)}>
-          ›
-        </button>
-      </div>
+      <WeekNav
+        label={formatWeekRangeKey(weekStart)}
+        onPrev={() => setWeekStart(addDaysKey(weekStart, -7))}
+        onNext={() => setWeekStart(weekEnd)}
+        onToday={() => setWeekStart(weekStartKey(today))}
+      />
       {error && <p className="error">{error}</p>}
       {chores === null && !error && <p className="muted">Caricamento…</p>}
       {sons.length === 0 && <p className="muted">Aggiungi i figli da Impostazioni › Famiglia.</p>}
@@ -137,7 +161,9 @@ export function Faccende({ me, members }: { me: Member; members: Member[] }) {
             const mine = chores.filter(
               (c) =>
                 c.assigned_to === son.id &&
-                (c.schedule === 'once' ? choreDueDates(c, weekStart, weekEnd).length > 0 : c.starts_on < weekEnd),
+                (c.schedule === 'once'
+                  ? choreDueDates(c, weekStart, weekEnd).length > 0
+                  : c.starts_on <= weekEndDay && (c.ends_on == null || c.ends_on >= weekStart)),
             )
             const dueCount = mine.reduce((n, c) => n + choreDueDates(c, weekStart, weekEnd).length, 0)
             const doneCount = mine.reduce(
@@ -200,9 +226,33 @@ export function Faccende({ me, members }: { me: Member; members: Member[] }) {
             )
           })}
       </div>
+      {archived.length > 0 && (
+        <div className="card spaced">
+          <button className="link" onClick={() => setShowArchived(!showArchived)} aria-expanded={showArchived}>
+            {showArchived ? '▾' : '▸'} Archiviate ({archived.length})
+          </button>
+          {showArchived && (
+            <ul className="archived">
+              {archived.map((c) => (
+                <li key={c.id}>
+                  <span>
+                    <strong>{c.title}</strong>
+                    <span className="muted small">
+                      {sons.find((s) => s.id === c.assigned_to)?.name} · {describeSchedule(c)}
+                    </span>
+                  </span>
+                  <button className="link" onClick={() => void reactivate(c)}>
+                    Riattiva
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {chores && chores.length > 0 && (
         <p className="muted small spaced fab-clear">
-          Tocca un giorno per segnarlo come fatto, tocca il nome per modificare la faccenda.
+          Tocca un giorno per segnarlo come fatto, tocca il nome per modificare, sospendere o archiviare la faccenda.
         </p>
       )}
       {sons.length > 0 && (

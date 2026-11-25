@@ -1,7 +1,7 @@
 import { fromWallTime, toWallTime } from '../../supabase/functions/_shared/recurrence.ts'
 
 export const WEEKDAYS_SHORT = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
-const WEEKDAYS_LONG = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
+export const WEEKDAYS_LONG = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
 const MONTHS = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -68,4 +68,17 @@ export function formatMonthKey(key: string): string {
   const [y, m] = key.split('-').map(Number)
   const name = MONTHS[m - 1]
   return `${name[0].toUpperCase()}${name.slice(1)} ${y}`
+}
+
+/** Midnight (family time zone) of the day containing `date`. */
+export function startOfDay(date: Date): Date {
+  const w = toWallTime(date)
+  return fromWallTime(w.year, w.month, w.day, 0, 0)
+}
+
+/** Whole days from "YYYY-MM-DD" `a` to `b` (negative if b is earlier). */
+export function daysBetweenKeys(a: string, b: string): number {
+  const [ay, am, ad] = a.split('-').map(Number)
+  const [by, bm, bd] = b.split('-').map(Number)
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000)
 }

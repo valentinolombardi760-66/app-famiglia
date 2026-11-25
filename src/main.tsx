@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { UiProvider } from './components/ui'
 import { applyLook, loadLook } from './lib/theme'
 import './styles.css'
 
@@ -10,6 +11,8 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => appl
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <UiProvider>
+      <App />
+    </UiProvider>
   </StrictMode>,
 )

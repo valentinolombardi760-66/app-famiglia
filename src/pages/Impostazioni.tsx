@@ -5,6 +5,9 @@ import { currentPushState, disablePush, enablePush, type PushState } from '../li
 import { familyAdmin } from '../lib/family'
 import { MODES, THEMES, loadLook, saveLook, type Look } from '../lib/theme'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '../../supabase/functions/_shared/family.ts'
+import { MEMBER_COLORS } from '../lib/members'
+import { friendlyError } from '../lib/errors'
+import { useUi } from '../components/ui'
 
 interface Props {
   me: Member
@@ -30,7 +33,7 @@ export function Impostazioni({ me, members, onMembersChanged }: Props) {
         setPush(await enablePush(me.id))
       }
     } catch (err) {
-      setPushError(`Non è stato possibile attivare le notifiche: ${(err as Error).message}`)
+      setPushError(`Non è stato possibile attivare le notifiche. ${friendlyError(err, 'salvare')}`)
     }
   }
 
@@ -136,7 +139,7 @@ function CambiaPassword() {
     const problem = passwordProblem(password)
     if (problem) return setMessage({ ok: false, text: problem })
     const { error } = await supabase.auth.updateUser({ password })
-    if (error) setMessage({ ok: false, text: `Errore: ${error.message}` })
+    if (error) setMessage({ ok: false, text: /different|same/i.test(error.message) ? 'È uguale a quella di adesso.' : friendlyError(error) })
     else {
       setPassword('')
       setMessage({ ok: true, text: 'Password cambiata.' })
@@ -170,6 +173,8 @@ function Famiglia({ me, members, onChanged }: { me: Member; members: Member[]; o
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [colorFor, setColorFor] = useState<string | null>(null)
+  const ui = useUi()
 
   async function run(action: () => Promise<string | null>, success: string) {
     setBusy(true)
@@ -195,7 +200,11 @@ function Famiglia({ me, members, onChanged }: { me: Member; members: Member[]; o
   }
 
   async function resetPassword(m: Member) {
-    const newPassword = prompt(`Nuova password per ${m.name} (almeno ${MIN_PASSWORD_LENGTH} caratteri):`)
+    const newPassword = await ui.askText(`Nuova password per ${m.name}`, `Almeno ${MIN_PASSWORD_LENGTH} caratteri`, {
+      type: 'text',
+      minLength: MIN_PASSWORD_LENGTH,
+      confirm: 'Imposta',
+    })
     if (newPassword === null) return
     await run(
       () => familyAdmin({ action: 'set_password', member_id: m.id, password: newPassword }),
@@ -204,13 +213,19 @@ function Famiglia({ me, members, onChanged }: { me: Member; members: Member[]; o
   }
 
   async function remove(m: Member) {
-    if (!confirm(`Togliere ${m.name} dalla famiglia? I suoi impegni verranno eliminati.`)) return
+    const answer = await ui.ask(
+      `Togliere ${m.name} dalla famiglia?`,
+      `Non potrà più entrare. Gli impegni che ha creato restano; le sue faccende e paghette vengono eliminate.`,
+      [{ value: 'yes', label: 'Togli', danger: true }],
+    )
+    if (answer !== 'yes') return
     await run(() => familyAdmin({ action: 'delete', member_id: m.id }), `${m.name} tolto dalla famiglia.`)
   }
 
   async function recolor(m: Member, color: string) {
     const { error } = await supabase.from('members').update({ color }).eq('id', m.id)
-    if (error) setMessage({ ok: false, text: `Errore: ${error.message}` })
+    setColorFor(null)
+    if (error) setMessage({ ok: false, text: friendlyError(error) })
     else onChanged()
   }
 
@@ -220,11 +235,12 @@ function Famiglia({ me, members, onChanged }: { me: Member; members: Member[]; o
       <ul className="members">
         {members.map((m) => (
           <li key={m.id}>
-            <input
-              type="color"
+            <button
+              className="color-dot"
+              style={{ background: m.color }}
               aria-label={`Colore di ${m.name}`}
-              value={m.color}
-              onChange={(e) => recolor(m, e.target.value)}
+              aria-expanded={colorFor === m.id}
+              onClick={() => setColorFor(colorFor === m.id ? null : m.id)}
             />
             <span>
               <strong>{m.name}</strong> · {m.role}
@@ -243,6 +259,20 @@ function Famiglia({ me, members, onChanged }: { me: Member; members: Member[]; o
                 </button>
               )}
             </span>
+            {colorFor === m.id && (
+              <div className="palette" role="group" aria-label={`Scegli il colore di ${m.name}`}>
+                {MEMBER_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={c === m.color ? 'color-dot on' : 'color-dot'}
+                    style={{ background: c }}
+                    aria-label={c}
+                    aria-pressed={c === m.color}
+                    onClick={() => void recolor(m, c)}
+                  />
+                ))}
+              </div>
+            )}
           </li>
         ))}
       </ul>

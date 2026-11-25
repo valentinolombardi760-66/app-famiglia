@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Chore, ChoreSchedule, Member } from '../lib/types'
 import { WEEKDAYS_SHORT } from '../lib/dates'
+import { addDaysKey } from '../lib/money'
+import { friendlyError } from '../lib/errors'
+import { useUi } from '../components/ui'
 
 const SCHEDULES: { key: ChoreSchedule; label: string }[] = [
   { key: 'daily', label: 'Ogni giorno' },
@@ -27,6 +30,8 @@ export function ChoreForm({ me, sons, chore, today, onClose }: Props) {
   const [schedule, setSchedule] = useState<ChoreSchedule>(chore?.schedule ?? 'daily')
   const [weekdays, setWeekdays] = useState<number[]>(chore?.weekdays ?? [])
   const [dueOn, setDueOn] = useState(chore?.due_on ?? today)
+  const [endsOn, setEndsOn] = useState(chore?.ends_on ?? '')
+  const ui = useUi()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,30 +59,78 @@ export function ChoreForm({ me, sons, chore, today, onClose }: Props) {
     if (schedule === 'days' && weekdays.length === 0) return setError('Scegli almeno un giorno.')
     if (schedule === 'weekly' && weekdays.length !== 1) return setError('Scegli entro che giorno va fatta.')
     if (schedule === 'once' && !dueOn) return setError('Scegli entro quando va fatta.')
+    const endDay = schedule === 'once' ? null : endsOn || null
+    if (endDay && endDay < today && !chore) return setError('"Fino al" non può essere nel passato.')
     setBusy(true)
     setError(null)
     const row = {
       title: name,
       schedule,
-      weekdays: schedule === 'days' || schedule === 'weekly' ? weekdays : null,
+      weekdays: schedule === 'days' || schedule === 'weekly' ? [...weekdays].sort() : null,
       due_on: schedule === 'once' ? dueOn : null,
+      ends_on: endDay,
     }
-    const { error } = chore
-      ? await supabase.from('chores').update({ ...row, assigned_to: assignees[0] }).eq('id', chore.id)
-      : await supabase
-          .from('chores')
-          .insert(assignees.map((id) => ({ ...row, assigned_to: id, starts_on: today, created_by: me.id })))
+    let error
+    if (!chore) {
+      ;({ error } = await supabase
+        .from('chores')
+        .insert(assignees.map((id) => ({ ...row, assigned_to: id, starts_on: today, created_by: me.id }))))
+    } else if (
+      chore.assigned_to !== assignees[0] ||
+      chore.schedule !== row.schedule ||
+      (chore.weekdays ?? []).join() !== (row.weekdays ?? []).join() ||
+      (chore.due_on ?? null) !== row.due_on
+    ) {
+      // Who or when changed: from today on, so past weeks keep showing what was asked then.
+      ;({ error } = await supabase.rpc('change_chore_from_today', {
+        p_id: chore.id,
+        p_title: name,
+        p_assigned_to: assignees[0],
+        p_schedule: row.schedule,
+        p_weekdays: row.weekdays,
+        p_due_on: row.due_on,
+        p_ends_on: row.ends_on,
+      }))
+    } else {
+      ;({ error } = await supabase.from('chores').update({ title: name, ends_on: row.ends_on }).eq('id', chore.id))
+    }
     setBusy(false)
-    if (error) return setError('Non è stato possibile salvare. Controlla la connessione e riprova.')
+    if (error) return setError(friendlyError(error))
+    ui.toast(chore ? 'Faccenda aggiornata.' : assignees.length > 1 ? `Faccenda assegnata a ${assignees.length} figli.` : 'Faccenda aggiunta.')
+    onClose(true)
+  }
+
+  async function archive() {
+    if (!chore) return
+    const previous = chore.ends_on ?? null
+    setBusy(true)
+    const { error } = await supabase.from('chores').update({ ends_on: addDaysKey(today, -1) }).eq('id', chore.id)
+    setBusy(false)
+    if (error) return setError(friendlyError(error, 'archiviare'))
+    ui.toast(`«${chore.title}» archiviata: lo storico resta.`, async () => {
+      await supabase.from('chores').update({ ends_on: previous }).eq('id', chore.id)
+      onClose(true)
+    })
     onClose(true)
   }
 
   async function remove() {
-    if (!chore || !confirm('Eliminare questa faccenda? Si perde anche lo storico di quando è stata fatta.')) return
+    if (!chore) return
+    const answer = await ui.ask(
+      'Eliminare la faccenda?',
+      'Si perde anche lo storico di quando è stata fatta. Se non serve più, archiviala: sparisce dalle liste ma lo storico resta.',
+      [
+        { value: 'archive', label: 'Archivia' },
+        { value: 'delete', label: 'Elimina per sempre', danger: true },
+      ],
+    )
+    if (answer === 'archive') return archive()
+    if (answer !== 'delete') return
     setBusy(true)
     const { error } = await supabase.from('chores').delete().eq('id', chore.id)
     setBusy(false)
-    if (error) return setError('Non è stato possibile eliminare. Controlla la connessione e riprova.')
+    if (error) return setError(friendlyError(error, 'eliminare'))
+    ui.toast('Faccenda eliminata.')
     onClose(true)
   }
 
@@ -155,14 +208,28 @@ export function ChoreForm({ me, sons, chore, today, onClose }: Props) {
           <input type="date" required value={dueOn} onChange={(e) => setDueOn(e.target.value)} />
         </label>
       )}
+      {schedule !== 'once' && (
+        <label>
+          Fino al (facoltativo, es. fine scuola)
+          <input type="date" value={endsOn} min={today} onChange={(e) => setEndsOn(e.target.value)} />
+        </label>
+      )}
+      {chore && schedule !== 'once' && chore.starts_on < today && (
+        <p className="muted small">Se cambi a chi tocca o i giorni, la modifica vale da oggi: le settimane passate restano com'erano.</p>
+      )}
       {error && <p className="error">{error}</p>}
       <div className="actions">
+        <button disabled={busy}>{busy ? 'Salvo…' : 'Salva'}</button>
+        {chore && (
+          <button type="button" className="secondary" disabled={busy} onClick={archive}>
+            Archivia
+          </button>
+        )}
         {chore && (
           <button type="button" className="danger" disabled={busy} onClick={remove}>
             Elimina
           </button>
         )}
-        <button disabled={busy}>{busy ? 'Salvo…' : 'Salva'}</button>
       </div>
     </form>
   )

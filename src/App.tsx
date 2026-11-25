@@ -3,17 +3,18 @@ import type { Session } from '@supabase/supabase-js'
 import { isConfigured, supabase } from './lib/supabase'
 import type { Member } from './lib/types'
 import { Login } from './pages/Login'
+import { Oggi } from './pages/Oggi'
 import { Calendario } from './pages/Calendario'
 import { Impostazioni } from './pages/Impostazioni'
 import { Faccende, MieFaccende } from './pages/Faccende'
 import { MiaPaghetta, Spese } from './pages/Spese'
 
-type Tab = 'calendario' | 'spese' | 'faccende' | 'impostazioni'
-const TABS: Tab[] = ['calendario', 'spese', 'faccende', 'impostazioni']
+type Tab = 'oggi' | 'calendario' | 'spese' | 'faccende' | 'impostazioni'
+const TABS: Tab[] = ['oggi', 'calendario', 'spese', 'faccende', 'impostazioni']
 
 function tabFromHash(): Tab {
   const t = location.hash.replace('#', '') as Tab
-  return TABS.includes(t) ? t : 'calendario'
+  return TABS.includes(t) ? t : 'oggi'
 }
 
 export function App() {
@@ -79,6 +80,7 @@ export function App() {
   return (
     <div className="app">
       <main className="content">
+        {tab === 'oggi' && <Oggi me={me} members={members} onGo={go} />}
         {tab === 'calendario' && <Calendario me={me} members={members} />}
         {tab === 'spese' &&
           (me.role === 'genitore' ? <Spese me={me} members={members} /> : <MiaPaghetta me={me} />)}
@@ -87,6 +89,7 @@ export function App() {
         {tab === 'impostazioni' && <Impostazioni me={me} members={members} onMembersChanged={loadMembers} />}
       </main>
       <nav className="tabbar">
+        <TabButton active={tab === 'oggi'} onClick={() => go('oggi')} icon="🏠" label="Oggi" />
         <TabButton active={tab === 'calendario'} onClick={() => go('calendario')} icon="📅" label="Calendario" />
         <TabButton
           active={tab === 'spese'}
@@ -95,7 +98,7 @@ export function App() {
           label={me.role === 'genitore' ? 'Spese' : 'Paghetta'}
         />
         <TabButton active={tab === 'faccende'} onClick={() => go('faccende')} icon="🧹" label="Faccende" />
-        <TabButton active={tab === 'impostazioni'} onClick={() => go('impostazioni')} icon="⚙️" label="Impostazioni" />
+        <TabButton active={tab === 'impostazioni'} onClick={() => go('impostazioni')} icon="⚙️" label="Altro" />
       </nav>
     </div>
   )
