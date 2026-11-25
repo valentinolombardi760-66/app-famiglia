@@ -32,18 +32,19 @@ Deno.serve(async () => {
   const yesterday = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10)
 
   const columns =
-    'id, title, all_day, location, starts_at, ends_at, recurrence, recurrence_weekdays, recurrence_until, reminder_minutes, remind_evening_before, event_members(member_id)'
+    'id, title, all_day, location, starts_at, ends_at, recurrence, recurrence_weekdays, recurrence_until, skipped_dates, reminder_minutes, remind_evening_before, driver_id, event_members(member_id)'
   const [oneOff, repeating, choreRows, completionRows] = await Promise.all([
     db.from('events').select(columns).eq('recurrence', 'none').gte('starts_at', windowStart.toISOString()).lte('starts_at', horizon),
     db.from('events').select(columns).neq('recurrence', 'none').lte('starts_at', horizon)
       .or(`recurrence_until.is.null,recurrence_until.gte.${yesterday}`),
-    db.from('chores').select('id, title, assigned_to, schedule, weekdays, due_on, starts_on'),
+    db.from('chores').select('id, title, assigned_to, schedule, weekdays, due_on, starts_on, ends_on')
+      .or(`ends_on.is.null,ends_on.gte.${yesterday}`),
     db.from('chore_completions').select('chore_id, due_on').gte('due_on', yesterday),
   ])
   const failed = oneOff.error ?? repeating.error ?? choreRows.error ?? completionRows.error
   if (failed) return Response.json({ error: failed.message }, { status: 500 })
 
-  type Row = ReminderEvent & { event_members: { member_id: string }[] }
+  type Row = ReminderEvent & { driver_id: string | null; event_members: { member_id: string }[] }
   const events = [...(oneOff.data ?? []), ...(repeating.data ?? [])] as unknown as Row[]
   const done = new Set((completionRows.data ?? []).map((c) => completionKey(c.chore_id, c.due_on)))
 
@@ -53,7 +54,8 @@ Deno.serve(async () => {
     ...dueReminders(events, windowStart, now).map((r) => {
       const event = events.find((e) => e.id === r.eventId)!
       const members = event.event_members.map((m) => m.member_id)
-      // An event for nobody in particular is for the whole family.
+      // An event for nobody in particular is for the whole family; whoever drives is reminded too.
+      if (members.length > 0 && event.driver_id) members.push(event.driver_id)
       return { ...r, url: './#calendario', recipients: members.length > 0 ? new Set(members) : null }
     }),
     ...dueChoreReminders((choreRows.data ?? []) as Chore[], done, windowStart, now).map((r) => ({
@@ -78,24 +80,36 @@ Deno.serve(async () => {
 
   let sent = 0
   const gone: string[] = []
+  // Reminders that failed on every phone for a temporary reason (network,
+  // push service busy): released so the next run, 5 minutes later, retries
+  // them while they are still inside the window.
+  const retry: string[] = []
   for (const reminder of due.filter((d) => claimedKeys.has(d.key))) {
     const targets = (subs ?? []).filter((s) => reminder.recipients === null || reminder.recipients.has(s.member_id))
     const payload = JSON.stringify({ title: reminder.title, body: reminder.body, tag: reminder.key, url: reminder.url })
+    let delivered = 0
+    let temporary = 0
     for (const s of targets) {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, {
           TTL: 3600,
         })
         sent++
+        delivered++
       } catch (err) {
         const status = (err as { statusCode?: number }).statusCode
         // 404/410: the phone unsubscribed or the app was uninstalled.
         if (status === 404 || status === 410) gone.push(s.id)
-        else console.error('push failed', status, err)
+        else {
+          temporary++
+          console.error('push failed', status, err)
+        }
       }
     }
+    if (delivered === 0 && temporary > 0) retry.push(reminder.key)
   }
   if (gone.length > 0) await db.from('push_subscriptions').delete().in('id', gone)
+  if (retry.length > 0) await db.from('sent_reminders').delete().in('key', retry)
 
-  return Response.json({ sent, removed: gone.length })
+  return Response.json({ sent, removed: gone.length, retry: retry.length })
 })

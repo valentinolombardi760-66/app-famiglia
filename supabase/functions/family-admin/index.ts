@@ -5,7 +5,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.2'
 import { parseFamilyRequest } from '../_shared/family.ts'
 
-const COLORS = ['#2f6f4f', '#c0392b', '#2471a3', '#d68910', '#7d3c98', '#17a589', '#a04000', '#5d6d7e']
+// Same palette as src/lib/members.ts: readable with white text on top.
+const COLORS = ['#2f6f4f', '#c0392b', '#1f5fa8', '#b45309', '#7d3c98', '#0f766e', '#a04000', '#475569']
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

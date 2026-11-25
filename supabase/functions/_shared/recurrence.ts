@@ -13,6 +13,8 @@ export interface RecurringEvent {
   recurrence_weekdays: number[] | null
   /** Last day (YYYY-MM-DD, family time zone) on which an occurrence may start. */
   recurrence_until: string | null
+  /** Days (YYYY-MM-DD, family time zone) on which a repetition was cancelled. */
+  skipped_dates?: string[] | null
 }
 
 export interface Occurrence {
@@ -148,6 +150,7 @@ export function expandOccurrences(
     lastDay = Math.min(lastDay, Date.UTC(y, m - 1, d))
   }
 
+  const skipped = new Set(event.skipped_dates ?? [])
   const result: Occurrence[] = []
   for (let day = Math.max(firstDay, rangeFirstDay); day <= lastDay; day += 86_400_000) {
     const d = new Date(day)
@@ -165,6 +168,7 @@ export function expandOccurrences(
       matches = dom === Math.min(first.day, daysInMonth(y, m))
     }
     if (!matches) continue
+    if (skipped.size > 0 && skipped.has(`${y}-${pad(m)}-${pad(dom)}`)) continue
 
     const occStart = fromWallTime(y, m, dom, first.hour, first.minute, tz)
     if (occStart.getTime() < start.getTime()) continue

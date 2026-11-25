@@ -24,9 +24,23 @@ export interface CalendarEvent {
   recurrence_until: string | null
   reminder_minutes: number[]
   remind_evening_before: boolean
-  created_by: string
+  skipped_dates: string[]
+  kind: EventKind
+  bring: string | null
+  driver_id: string | null
+  /** Null when whoever created it is no longer in the family. */
+  created_by: string | null
   event_members: { member_id: string }[]
 }
+
+export type EventKind = 'impegno' | 'sport' | 'visita' | 'scuola'
+
+export const EVENT_KINDS: { key: EventKind; label: string; icon: string }[] = [
+  { key: 'impegno', label: 'Impegno', icon: '📌' },
+  { key: 'sport', label: 'Sport', icon: '⚽' },
+  { key: 'visita', label: 'Visita', icon: '🩺' },
+  { key: 'scuola', label: 'Scuola', icon: '🎒' },
+]
 
 export interface Expense {
   id: string

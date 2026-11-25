@@ -13,6 +13,7 @@ import {
   weekStartKey,
 } from '../lib/money'
 import { PaghettaForm, SpesaForm } from './MoneyForms'
+import { WeekNav } from '../components/WeekNav'
 
 const CATEGORY = new Map(CATEGORIES.map((c) => [c.key, c]))
 // Pocket money history shown to parents.
@@ -97,22 +98,13 @@ function SpeseSettimana({ me, onForm }: { me: Member; onForm: (open: boolean) =>
 
   return (
     <>
-      <div className="week-nav">
-        <button className="icon" aria-label="Settimana precedente" onClick={() => setWeekStart(addDaysKey(weekStart, -7))}>
-          ‹
-        </button>
-        <button className="link" onClick={() => setWeekStart(weekStartKey(today))}>
-          {formatWeekRangeKey(weekStart)}
-        </button>
-        <button
-          className="icon"
-          aria-label="Settimana successiva"
-          disabled={weekEnd > today}
-          onClick={() => setWeekStart(addDaysKey(weekStart, 7))}
-        >
-          ›
-        </button>
-      </div>
+      <WeekNav
+        label={formatWeekRangeKey(weekStart)}
+        onPrev={() => setWeekStart(addDaysKey(weekStart, -7))}
+        onNext={() => setWeekStart(addDaysKey(weekStart, 7))}
+        onToday={() => setWeekStart(weekStartKey(today))}
+        nextDisabled={weekEnd > today}
+      />
       {error && <p className="error">{error}</p>}
       <div className="card summary">
         <p className="muted small">Totale della settimana</p>

@@ -17,6 +17,13 @@ export interface Chore {
   due_on: string | null
   /** First day a recurring chore counts. */
   starts_on: string
+  /** Last day it counts; null = no end. Archived chores end yesterday. */
+  ends_on?: string | null
+}
+
+/** True when the chore no longer counts from `today` on. */
+export function isArchived(chore: Chore, today: string): boolean {
+  return chore.ends_on != null && chore.ends_on < today
 }
 
 /** A chore not ticked by this hour on its due day gets a reminder. */
@@ -43,6 +50,11 @@ const MAX_DAYS = 400
 
 /** Days in [from, to) on which the chore is due. */
 export function choreDueDates(chore: Chore, from: string, to: string): string[] {
+  // Days after ends_on never count.
+  if (chore.ends_on != null) {
+    const afterEnd = addDaysToKey(chore.ends_on, 1)
+    if (afterEnd < to) to = afterEnd
+  }
   if (chore.schedule === 'once') {
     return chore.due_on && chore.due_on >= from && chore.due_on < to ? [chore.due_on] : []
   }
